@@ -78,6 +78,10 @@ func (h *AuthHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 			RefreshToken: refreshToken,
 		},
 	)
+	if err != nil {
+		response.InternalServerError(w)
+		return
+	}
 
 	response.WriteResponse(w, http.StatusOK, ansBytes)
 }

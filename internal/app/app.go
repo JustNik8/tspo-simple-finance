@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -25,7 +26,12 @@ func Run() {
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close(context.Background())
+	defer func() {
+		err := conn.Close(context.Background())
+		if err != nil {
+			log.Println(err)
+		}
+	}()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	tokenManager, err := tokens.NewTokenManager(signingKey)
