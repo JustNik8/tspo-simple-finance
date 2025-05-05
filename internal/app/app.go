@@ -36,7 +36,6 @@ func Run() {
 	financeDB := db.NewFinanceDB(conn)
 	transactionHandler := handler.NewTransactionHandler(financeDB, validate)
 	authHandler := handler.NewAuthHandler(validate, tokenManager, financeDB)
-
 	authMiddleware := appmiddleware.NewAuthMiddleware(tokenManager)
 
 	r := chi.NewRouter()
