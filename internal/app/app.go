@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -19,9 +20,15 @@ import (
 const (
 	postgresConnStr = "postgres://user:user@postgres:5432/finance_db"
 	signingKey      = "J9&#YAVu+gRY7S0V(j)M@8fbr}?$8t"
+	serverPortKey   = "SERVER_PORT"
 )
 
 func Run() {
+	serverPort := os.Getenv(serverPortKey)
+	if serverPort == "" {
+		panic("env var SERVER_PORT is empty")
+	}
+
 	conn, err := pgx.Connect(context.Background(), postgresConnStr)
 	if err != nil {
 		panic(err)
@@ -65,7 +72,7 @@ func Run() {
 		r.Post("/sign_in", authHandler.SignIn)
 	})
 
-	addr := fmt.Sprintf(":%s", "8000")
+	addr := fmt.Sprintf(":%s", serverPort)
 	server := http.Server{
 		Addr:    addr,
 		Handler: r,

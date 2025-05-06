@@ -17,6 +17,8 @@ services:
 
   finance_app:
     build: .
+    environment:
+      SERVER_PORT: "8000"
     ports:
       - "8000:8000"
     depends_on:
