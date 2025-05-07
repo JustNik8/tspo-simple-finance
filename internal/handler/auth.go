@@ -163,6 +163,11 @@ func (h *AuthHandler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		h.accessTokenTTL,
 		h.refreshTokenTTL,
 	)
+	if err != nil {
+		h.logger.Warn(err)
+		response.InternalServerError(w)
+		return
+	}
 
 	ansBytes, err := json.Marshal(
 		models.Tokens{
@@ -171,6 +176,7 @@ func (h *AuthHandler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
+		h.logger.Warn(err)
 		response.InternalServerError(w)
 		return
 	}
