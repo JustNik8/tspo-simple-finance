@@ -3,12 +3,12 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"simple-finance/internal/db"
 	"simple-finance/internal/handler/middleware"
 	"simple-finance/internal/handler/response"
@@ -19,12 +19,18 @@ import (
 type TransactionHandler struct {
 	db        *db.FinanceDB
 	validator *validator.Validate
+	logger    *logrus.Logger
 }
 
-func NewTransactionHandler(db *db.FinanceDB, validator *validator.Validate) TransactionHandler {
+func NewTransactionHandler(
+	db *db.FinanceDB,
+	validator *validator.Validate,
+	logger *logrus.Logger,
+) TransactionHandler {
 	return TransactionHandler{
 		db:        db,
 		validator: validator,
+		logger:    logger,
 	}
 }
 
@@ -56,7 +62,7 @@ func (h *TransactionHandler) InsertTransaction(w http.ResponseWriter, r *http.Re
 	transactionID, err := h.db.InsertTransaction(ctx, transaction)
 
 	if err != nil {
-		log.Println(err)
+		h.logger.Warn(err)
 		response.InternalServerError(w)
 		return
 	}
@@ -67,7 +73,7 @@ func (h *TransactionHandler) InsertTransaction(w http.ResponseWriter, r *http.Re
 func (h *TransactionHandler) GetTransactions(w http.ResponseWriter, r *http.Request) {
 	tokenInfo, ok := r.Context().Value(middleware.TokenInfoKey).(tokens.TokenInfo)
 	if !ok {
-		log.Println("Not found tokenInfo")
+		h.logger.Info("Not found tokenInfo")
 		response.InternalServerError(w)
 		return
 	}
@@ -75,14 +81,14 @@ func (h *TransactionHandler) GetTransactions(w http.ResponseWriter, r *http.Requ
 	ctx := context.Background()
 	transactions, err := h.db.GetTransactions(ctx, tokenInfo.UserID)
 	if err != nil {
-		log.Println(err)
+		h.logger.Warn(err)
 		response.InternalServerError(w)
 		return
 	}
 
 	resp, err := json.Marshal(transactions)
 	if err != nil {
-		log.Println(err)
+		h.logger.Warn(err)
 		response.InternalServerError(w)
 		return
 	}
@@ -104,14 +110,14 @@ func (h *TransactionHandler) GetTransactionByID(w http.ResponseWriter, r *http.R
 
 	transaction, err := h.db.GetTransactionByID(context.Background(), tokenInfo.UserID, transactionID)
 	if err != nil {
-		log.Println(err)
+		h.logger.Warn(err)
 		response.InternalServerError(w)
 		return
 	}
 
 	resp, err := json.Marshal(transaction)
 	if err != nil {
-		log.Println(err)
+		h.logger.Warn(err)
 		response.InternalServerError(w)
 		return
 	}
@@ -134,7 +140,7 @@ func (h *TransactionHandler) DeleteTransactionByID(w http.ResponseWriter, r *htt
 
 	err := h.db.DeleteTransactionByID(context.Background(), tokenInfo.UserID, transactionID)
 	if err != nil {
-		log.Println(err)
+		h.logger.Warn(err)
 		response.InternalServerError(w)
 		return
 	}
