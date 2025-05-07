@@ -10,7 +10,7 @@ ALTER TABLE
 CREATE TABLE "transactions"(
                                "id" UUID NOT NULL,
                                "user_id" UUID NOT NULL,
-                               "amout" DOUBLE PRECISION NOT NULL,
+                               "amount" DOUBLE PRECISION NOT NULL,
                                "category_id" UUID NOT NULL,
                                "comment" TEXT NOT NULL,
                                "date" DATE NOT NULL,
@@ -27,7 +27,7 @@ ALTER TABLE
     "categories" ADD PRIMARY KEY("id");
 CREATE TABLE "tags"(
                        "id" UUID NOT NULL,
-                       "user_id" BIGINT NOT NULL,
+                       "user_id" UUID NOT NULL,
                        "name" TEXT NOT NULL
 );
 ALTER TABLE
