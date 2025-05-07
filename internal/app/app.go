@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
+	"github.com/joho/godotenv"
 	"simple-finance/internal/db"
 	"simple-finance/internal/handler"
 	appmiddleware "simple-finance/internal/handler/middleware"
@@ -18,18 +19,22 @@ import (
 )
 
 const (
-	postgresConnStr = "postgres://user:user@postgres:5432/finance_db"
-	signingKey      = "J9&#YAVu+gRY7S0V(j)M@8fbr}?$8t"
-	serverPortKey   = "SERVER_PORT"
+	signingKey    = "J9&#YAVu+gRY7S0V(j)M@8fbr}?$8t"
+	serverPortKey = "SERVER_PORT"
 )
 
 func Run() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("No .env file found, using system environment variables")
+	}
+
 	serverPort := os.Getenv(serverPortKey)
 	if serverPort == "" {
 		panic("env var SERVER_PORT is empty")
 	}
 
-	conn, err := pgx.Connect(context.Background(), postgresConnStr)
+	conn, err := pgx.Connect(context.Background(), getPostgresConn())
 	if err != nil {
 		panic(err)
 	}
@@ -82,4 +87,33 @@ func Run() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func getPostgresConn() string {
+	dbUser, found := os.LookupEnv("DB_USER")
+	if !found {
+		log.Fatal("DB_USER not found")
+	}
+
+	dbPass, found := os.LookupEnv("DB_PASS")
+	if !found {
+		log.Fatal("DB_PASS not found")
+	}
+
+	dbHost, found := os.LookupEnv("DB_HOST")
+	if !found {
+		log.Fatal("DB_HOST not found")
+	}
+
+	dbPort, found := os.LookupEnv("DB_PORT")
+	if !found {
+		log.Fatal("DB_PORT not found")
+	}
+
+	dbName, found := os.LookupEnv("DB_NAME")
+	if !found {
+		log.Fatal("DB_NAME not found")
+	}
+
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName)
 }
