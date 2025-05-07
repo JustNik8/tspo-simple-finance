@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 	"simple-finance/internal/db"
 	"simple-finance/internal/handler"
 	appmiddleware "simple-finance/internal/handler/middleware"
@@ -24,36 +24,38 @@ const (
 )
 
 func Run() {
+	logger := setupLogger()
+
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("No .env file found, using system environment variables")
+		logger.Fatal("No .env file found, using system environment variables")
 	}
 
 	serverPort := os.Getenv(serverPortKey)
 	if serverPort == "" {
-		panic("env var SERVER_PORT is empty")
+		logger.Fatal("env var SERVER_PORT is empty")
 	}
 
-	conn, err := pgx.Connect(context.Background(), getPostgresConn())
+	conn, err := pgx.Connect(context.Background(), getPostgresConn(logger))
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
 	}
 	defer func() {
 		err := conn.Close(context.Background())
 		if err != nil {
-			log.Println(err)
+			logger.Warn(err)
 		}
 	}()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	tokenManager, err := tokens.NewTokenManager(signingKey)
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
 	}
 
 	financeDB := db.NewFinanceDB(conn)
-	transactionHandler := handler.NewTransactionHandler(financeDB, validate)
-	authHandler := handler.NewAuthHandler(validate, tokenManager, financeDB)
+	transactionHandler := handler.NewTransactionHandler(financeDB, validate, logger)
+	authHandler := handler.NewAuthHandler(validate, tokenManager, financeDB, logger)
 	authMiddleware := appmiddleware.NewAuthMiddleware(tokenManager)
 
 	r := chi.NewRouter()
@@ -85,35 +87,48 @@ func Run() {
 
 	err = server.ListenAndServe()
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
 	}
 }
 
-func getPostgresConn() string {
+func getPostgresConn(logger *logrus.Logger) string {
 	dbUser, found := os.LookupEnv("DB_USER")
 	if !found {
-		log.Fatal("DB_USER not found")
+		logger.Fatal("DB_USER not found")
 	}
 
 	dbPass, found := os.LookupEnv("DB_PASS")
 	if !found {
-		log.Fatal("DB_PASS not found")
+		logger.Fatal("DB_PASS not found")
 	}
 
 	dbHost, found := os.LookupEnv("DB_HOST")
 	if !found {
-		log.Fatal("DB_HOST not found")
+		logger.Fatal("DB_HOST not found")
 	}
 
 	dbPort, found := os.LookupEnv("DB_PORT")
 	if !found {
-		log.Fatal("DB_PORT not found")
+		logger.Fatal("DB_PORT not found")
 	}
 
 	dbName, found := os.LookupEnv("DB_NAME")
 	if !found {
-		log.Fatal("DB_NAME not found")
+		logger.Fatal("DB_NAME not found")
 	}
 
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName)
+}
+
+func setupLogger() *logrus.Logger {
+	logger := logrus.New()
+
+	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		logger.SetOutput(file)
+	} else {
+		logger.Warn("Не удалось открыть файл логов, логирование в консоль")
+	}
+
+	return logger
 }

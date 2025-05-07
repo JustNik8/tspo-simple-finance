@@ -3,11 +3,11 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 	"simple-finance/internal/db"
 	"simple-finance/internal/handler/response"
 	"simple-finance/internal/models"
@@ -20,12 +20,14 @@ type AuthHandler struct {
 	db              *db.FinanceDB
 	accessTokenTTL  time.Duration
 	refreshTokenTTL time.Duration
+	logger          *logrus.Logger
 }
 
 func NewAuthHandler(
 	validate *validator.Validate,
 	tokenManager *tokens.TokenManager,
 	db *db.FinanceDB,
+	logger *logrus.Logger,
 ) *AuthHandler {
 	return &AuthHandler{
 		validate:        validate,
@@ -33,6 +35,7 @@ func NewAuthHandler(
 		db:              db,
 		accessTokenTTL:  30 * 24 * time.Hour,
 		refreshTokenTTL: 30 * 24 * time.Hour,
+		logger:          logger,
 	}
 }
 
@@ -60,14 +63,14 @@ func (h *AuthHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 	accessToken, err := h.tokenManager.NewJWT(tokens.TokenInfo{UserID: userID}, h.accessTokenTTL)
 	if err != nil {
-		log.Println(err)
+		h.logger.Warn(err)
 		response.InternalServerError(w)
 		return
 	}
 
 	refreshToken, err := h.tokenManager.NewJWT(tokens.TokenInfo{UserID: userID}, h.refreshTokenTTL)
 	if err != nil {
-		log.Println(err)
+		h.logger.Warn(err)
 		response.InternalServerError(w)
 		return
 	}
