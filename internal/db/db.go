@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"simple-finance/internal/models"
@@ -107,4 +108,52 @@ func (db *FinanceDB) GetUserID(ctx context.Context, username string) (string, er
 	err := row.Scan(&userID)
 
 	return userID, err
+}
+
+func (db *FinanceDB) InsertUser(ctx context.Context, userInfo models.UserInfo) (models.UserInfo, error) {
+	const query = `
+		INSERT INTO users(id, email, username, hash_pass, created_at)
+		VALUES($1, $2, $3, $4, NOW())
+		RETURNING created_at
+	`
+
+	row := db.conn.QueryRow(ctx, query,
+		userInfo.ID,
+		userInfo.Email,
+		userInfo.UserName,
+		userInfo.Password,
+	)
+
+	var createdAt time.Time
+	err := row.Scan(&createdAt)
+	if err != nil {
+		return models.UserInfo{}, err
+	}
+
+	return models.UserInfo{
+		ID:        userInfo.ID,
+		Email:     userInfo.Email,
+		UserName:  userInfo.UserName,
+		CreatedAt: createdAt,
+	}, nil
+}
+
+func (db *FinanceDB) GetUserInfo(ctx context.Context, userName string) (models.UserInfo, error) {
+	const query = `
+		SELECT id, email, username, hash_pass, created_at
+		FROM users
+		WHERE username = $1
+		LIMIT 1
+	`
+	row := db.conn.QueryRow(ctx, query, userName)
+	var userInfo models.UserInfo
+	err := row.Scan(
+		&userInfo.ID,
+		&userInfo.Email,
+		&userInfo.UserName,
+		&userInfo.Password,
+		&userInfo.CreatedAt,
+	)
+
+	return userInfo, err
 }

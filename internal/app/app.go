@@ -12,15 +12,18 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
+	"simple-finance/internal/auth"
 	"simple-finance/internal/db"
 	"simple-finance/internal/handler"
 	appmiddleware "simple-finance/internal/handler/middleware"
 	"simple-finance/internal/tokens"
+	"simple-finance/pkg/hash"
 )
 
 const (
 	signingKey    = "J9&#YAVu+gRY7S0V(j)M@8fbr}?$8t"
 	serverPortKey = "SERVER_PORT"
+	salt          = "dxetkyhvxkhpndxbfnmwkctqqekanrmq"
 )
 
 func Run() {
@@ -52,10 +55,23 @@ func Run() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	hasher := hash.NewSHA1Hasher(salt)
 
 	financeDB := db.NewFinanceDB(conn)
+	authManager := auth.NewManager(
+		financeDB,
+		hasher,
+		tokenManager,
+	)
+
 	transactionHandler := handler.NewTransactionHandler(financeDB, validate, logger)
-	authHandler := handler.NewAuthHandler(validate, tokenManager, financeDB, logger)
+	authHandler := handler.NewAuthHandler(
+		validate,
+		financeDB,
+		logger,
+		hasher,
+		authManager,
+	)
 	authMiddleware := appmiddleware.NewAuthMiddleware(tokenManager)
 
 	r := chi.NewRouter()
@@ -77,6 +93,8 @@ func Run() {
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/sign_in", authHandler.SignIn)
+		r.Post("/sign_up", authHandler.SignUp)
+		r.Post("/refresh/tokens", authHandler.RefreshTokens)
 	})
 
 	addr := fmt.Sprintf(":%s", serverPort)
@@ -122,13 +140,5 @@ func getPostgresConn(logger *logrus.Logger) string {
 
 func setupLogger() *logrus.Logger {
 	logger := logrus.New()
-
-	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err == nil {
-		logger.SetOutput(file)
-	} else {
-		logger.Warn("Не удалось открыть файл логов, логирование в консоль")
-	}
-
 	return logger
 }
