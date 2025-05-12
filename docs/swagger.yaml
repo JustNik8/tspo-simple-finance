@@ -1,0 +1,291 @@
+basePath: /
+definitions:
+  simple-finance_internal_handler_response.IDResponse:
+    description: ID response
+    properties:
+      id:
+        type: string
+    type: object
+  simple-finance_internal_models.SignInInput:
+    description: User login credentials
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  simple-finance_internal_models.SignUpInput:
+    description: User registration data
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  simple-finance_internal_models.Tokens:
+    description: Authentication tokens response
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  simple-finance_internal_models.Transaction:
+    description: Financial transaction data
+    properties:
+      amount:
+        type: number
+      category_id:
+        type: string
+      comment:
+        type: string
+      created_at:
+        type: string
+      date:
+        type: string
+      id:
+        type: string
+      user_id:
+        type: string
+    required:
+    - amount
+    - category_id
+    - comment
+    - date
+    - user_id
+    type: object
+  simple-finance_internal_models.UserInfo:
+    description: User information
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+host: localhost:8000
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is a simple finance management API
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Simple Finance API
+  version: "1.0"
+paths:
+  /api/transaction:
+    get:
+      description: Retrieve all transactions for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/simple-finance_internal_models.Transaction'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - Bearer: []
+      summary: Get user transactions
+      tags:
+      - transactions
+    post:
+      consumes:
+      - application/json
+      description: Add a new financial transaction for the authenticated user
+      parameters:
+      - description: Transaction data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/simple-finance_internal_models.Transaction'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/simple-finance_internal_handler_response.IDResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - Bearer: []
+      summary: Create a new transaction
+      tags:
+      - transactions
+  /api/transaction/{transaction_uuid}:
+    delete:
+      description: Delete a specific transaction by its ID
+      parameters:
+      - description: Transaction UUID
+        in: path
+        name: transaction_uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - Bearer: []
+      summary: Delete transaction
+      tags:
+      - transactions
+    get:
+      description: Get a specific transaction by its ID
+      parameters:
+      - description: Transaction UUID
+        in: path
+        name: transaction_uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/simple-finance_internal_models.Transaction'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - Bearer: []
+      summary: Get single transaction
+      tags:
+      - transactions
+  /auth/sign_in:
+    post:
+      consumes:
+      - application/json
+      description: Login with username and password to get access and refresh tokens
+      parameters:
+      - description: User credentials
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/simple-finance_internal_models.SignInInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/simple-finance_internal_models.Tokens'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Authenticate user
+      tags:
+      - auth
+  /auth/sign_up:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with email, username and password
+      parameters:
+      - description: User registration data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/simple-finance_internal_models.SignUpInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/simple-finance_internal_models.UserInfo'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Регистрирует нового пользователя
+      tags:
+      - auth
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

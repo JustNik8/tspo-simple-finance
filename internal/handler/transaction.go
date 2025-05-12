@@ -34,6 +34,19 @@ func NewTransactionHandler(
 	}
 }
 
+// InsertTransaction             godoc
+// @Summary      Create a new transaction
+// @Description  Add a new financial transaction for the authenticated user
+// @Tags         transactions
+// @Accept       json
+// @Produce      json
+// @Param        input  body  models.Transaction  true  "Transaction data"
+// @Success      200    {object}  response.IDResponse
+// @Failure      400    {object}  string
+// @Failure      401    {object}  string
+// @Failure      500    {object}  string
+// @Router       /api/transaction [post]
+// @Security Bearer
 func (h *TransactionHandler) InsertTransaction(w http.ResponseWriter, r *http.Request) {
 	tokenInfo, ok := r.Context().Value(middleware.TokenInfoKey).(tokens.TokenInfo)
 	if !ok {
@@ -70,6 +83,16 @@ func (h *TransactionHandler) InsertTransaction(w http.ResponseWriter, r *http.Re
 	response.IdResponse(w, transactionID)
 }
 
+// GetTransactions             godoc
+// @Summary      Get user transactions
+// @Description  Retrieve all transactions for the authenticated user
+// @Tags         transactions
+// @Produce      json
+// @Success      200  {array}  models.Transaction
+// @Failure      401  {object}  string
+// @Failure      500  {object}  string
+// @Router       /api/transaction [get]
+// @Security     Bearer
 func (h *TransactionHandler) GetTransactions(w http.ResponseWriter, r *http.Request) {
 	tokenInfo, ok := r.Context().Value(middleware.TokenInfoKey).(tokens.TokenInfo)
 	if !ok {
@@ -95,6 +118,18 @@ func (h *TransactionHandler) GetTransactions(w http.ResponseWriter, r *http.Requ
 	response.WriteResponse(w, http.StatusOK, resp)
 }
 
+// GetTransactionByID             godoc
+// @Summary      Get single transaction
+// @Description  Get a specific transaction by its ID
+// @Tags         transactions
+// @Produce      json
+// @Param        transaction_uuid  path  string  true  "Transaction UUID"
+// @Success      200  {object}  models.Transaction
+// @Failure      400  {object}  string
+// @Failure      401  {object}  string
+// @Failure      500  {object}  string
+// @Router       /api/transaction/{transaction_uuid} [get]
+// @Security Bearer
 func (h *TransactionHandler) GetTransactionByID(w http.ResponseWriter, r *http.Request) {
 	tokenInfo, ok := r.Context().Value(middleware.TokenInfoKey).(tokens.TokenInfo)
 	if !ok {
@@ -125,6 +160,19 @@ func (h *TransactionHandler) GetTransactionByID(w http.ResponseWriter, r *http.R
 	response.WriteResponse(w, http.StatusOK, resp)
 }
 
+// DeleteTransactionByID             godoc
+// @Summary      Delete transaction
+// @Description  Delete a specific transaction by its ID
+// @Tags         transactions
+// @Produce      json
+// @Param        transaction_uuid  path  string  true  "Transaction UUID"
+// @Success      200
+// @Failure      400  {object}  string
+// @Failure      401  {object}  string
+// @Failure      404  {object}  string
+// @Failure      500  {object}  string
+// @Router       /api/transaction/{transaction_uuid} [delete]
+// @Security     Bearer
 func (h *TransactionHandler) DeleteTransactionByID(w http.ResponseWriter, r *http.Request) {
 	tokenInfo, ok := r.Context().Value(middleware.TokenInfoKey).(tokens.TokenInfo)
 	if !ok {

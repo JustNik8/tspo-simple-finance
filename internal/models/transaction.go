@@ -2,6 +2,8 @@ package models
 
 import "time"
 
+// Transaction represents a financial transaction
+// @Description  Financial transaction data
 type Transaction struct {
 	ID         string    `json:"id"`
 	UserID     string    `validate:"required" json:"user_id"`
