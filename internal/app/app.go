@@ -3,21 +3,13 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"simple-finance/internal/api"
+	"simple-finance/internal/closer"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-playground/validator/v10"
-	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
-	"simple-finance/internal/auth"
-	"simple-finance/internal/db"
-	"simple-finance/internal/handler"
-	appmiddleware "simple-finance/internal/handler/middleware"
-	"simple-finance/internal/tokens"
-	"simple-finance/pkg/hash"
 )
 
 const (
@@ -26,119 +18,79 @@ const (
 	salt          = "dxetkyhvxkhpndxbfnmwkctqqekanrmq"
 )
 
-func Run() {
-	logger := setupLogger()
+type App struct {
+	serviceProvider *serviceProvider
+	httpServer      *http.Server
+}
 
+func NewApp(ctx context.Context) (*App, error) {
+	a := &App{}
+
+	err := a.initDeps(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return a, nil
+}
+
+func (a *App) Run() error {
+	defer func() {
+		closer.CloseAll()
+		closer.Wait()
+	}()
+
+	return a.runHttpServer()
+}
+
+func (a *App) initDeps(ctx context.Context) error {
+	inits := []func(context.Context) error{
+		a.initConfig,
+		a.initServiceProvider,
+		a.initHttpServer,
+	}
+
+	for _, f := range inits {
+		err := f(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *App) initConfig(_ context.Context) error {
 	err := godotenv.Load()
 	if err != nil {
-		logger.Fatal("No .env file found, using system environment variables")
+		return err
 	}
+
+	return nil
+}
+
+func (a *App) initServiceProvider(_ context.Context) error {
+	a.serviceProvider = newServiceProvider()
+	return nil
+}
+
+func (a *App) initHttpServer(ctx context.Context) error {
+	router := api.NewRouter(a.serviceProvider.GetAuthHandler(), a.serviceProvider.GetTransactionHandler(), a.serviceProvider.GetAuthMiddleware())
 
 	serverPort := os.Getenv(serverPortKey)
 	if serverPort == "" {
-		logger.Fatal("env var SERVER_PORT is empty")
+		log.Fatal("env var SERVER_PORT is empty")
 	}
-
-	conn, err := pgx.Connect(context.Background(), getPostgresConn(logger))
-	if err != nil {
-		logger.Fatal(err)
-	}
-	defer func() {
-		err := conn.Close(context.Background())
-		if err != nil {
-			logger.Warn(err)
-		}
-	}()
-
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	tokenManager, err := tokens.NewTokenManager(signingKey)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	hasher := hash.NewSHA1Hasher(salt)
-
-	financeDB := db.NewFinanceDB(conn)
-	authManager := auth.NewManager(
-		financeDB,
-		hasher,
-		tokenManager,
-	)
-
-	transactionHandler := handler.NewTransactionHandler(financeDB, validate, logger)
-	authHandler := handler.NewAuthHandler(
-		validate,
-		financeDB,
-		logger,
-		hasher,
-		authManager,
-	)
-	authMiddleware := appmiddleware.NewAuthMiddleware(tokenManager)
-
-	r := chi.NewRouter()
-
-	// A good base middleware stack
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	r.Route("/api", func(r chi.Router) {
-		r.Use(authMiddleware.MakeAuth)
-
-		r.Post("/transaction", transactionHandler.InsertTransaction)
-		r.Get("/transaction", transactionHandler.GetTransactions)
-		r.Get("/transaction/{transaction_uuid}", transactionHandler.GetTransactionByID)
-		r.Delete("/transaction/{transaction_uuid}", transactionHandler.DeleteTransactionByID)
-	})
-
-	r.Route("/auth", func(r chi.Router) {
-		r.Post("/sign_in", authHandler.SignIn)
-		r.Post("/sign_up", authHandler.SignUp)
-		r.Post("/refresh/tokens", authHandler.RefreshTokens)
-	})
-
 	addr := fmt.Sprintf(":%s", serverPort)
-	server := http.Server{
+	a.httpServer = &http.Server{
 		Addr:    addr,
-		Handler: r,
+		Handler: router,
 	}
 
-	err = server.ListenAndServe()
-	if err != nil {
-		logger.Fatal(err)
-	}
+	return nil
 }
 
-func getPostgresConn(logger *logrus.Logger) string {
-	dbUser, found := os.LookupEnv("DB_USER")
-	if !found {
-		logger.Fatal("DB_USER not found")
-	}
-
-	dbPass, found := os.LookupEnv("DB_PASS")
-	if !found {
-		logger.Fatal("DB_PASS not found")
-	}
-
-	dbHost, found := os.LookupEnv("DB_HOST")
-	if !found {
-		logger.Fatal("DB_HOST not found")
-	}
-
-	dbPort, found := os.LookupEnv("DB_PORT")
-	if !found {
-		logger.Fatal("DB_PORT not found")
-	}
-
-	dbName, found := os.LookupEnv("DB_NAME")
-	if !found {
-		logger.Fatal("DB_NAME not found")
-	}
-
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName)
-}
-
-func setupLogger() *logrus.Logger {
-	logger := logrus.New()
-	return logger
+func (a *App) runHttpServer() error {
+	log.Println("starting http server on port", a.httpServer.Addr)
+	return a.httpServer.ListenAndServe()
 }

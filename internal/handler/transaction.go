@@ -26,8 +26,8 @@ func NewTransactionHandler(
 	db *db.FinanceDB,
 	validator *validator.Validate,
 	logger *logrus.Logger,
-) TransactionHandler {
-	return TransactionHandler{
+) *TransactionHandler {
+	return &TransactionHandler{
 		db:        db,
 		validator: validator,
 		logger:    logger,
