@@ -1,7 +1,12 @@
 package main
 
-import "simple-finance/internal/app"
-import _ "net/http"
+
+import (
+	"context"
+	"log"
+	"simple-finance/internal/app"
+)
+
 
 //go:generate swag init -o=./swagger --parseDependency --parseDepth=1
 // рабочая команда для запуска из корня проекта
@@ -30,5 +35,16 @@ import _ "net/http"
 // @name Authorization
 // @description                 Type "Bearer" followed by a space and JWT token
 func main() {
-	app.Run()
+	ctx := context.Background()
+
+	app, err := app.NewApp(ctx)
+
+	if err != nil {
+		log.Fatal(err)
+
+	}
+	err = app.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
