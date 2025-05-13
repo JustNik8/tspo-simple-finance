@@ -10,6 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	_ "net/http"
 	"simple-finance/internal/auth"
 	"simple-finance/internal/db"
 	"simple-finance/internal/errs"
@@ -46,6 +47,18 @@ func NewAuthHandler(
 	}
 }
 
+// SignIn             godoc
+// @Summary      Authenticate user
+// @Description  Login with username and password to get access and refresh tokens
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input  body  models.SignInInput  true  "User credentials"
+// @Success      200    {object}  models.Tokens
+// @Failure      400    {object}  string
+// @Failure      401    {object}  string
+// @Failure      500    {object}  string
+// @Router       /auth/sign_in [post]
 func (h *AuthHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	var input models.SignInInput
 
@@ -97,6 +110,17 @@ func (h *AuthHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	response.WriteResponse(w, http.StatusOK, ansBytes)
 }
 
+// SignUp             godoc
+// @Summary      Регистрирует нового пользователя
+// @Description  Create a new user account with email, username and password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input  body  models.SignUpInput  true  "User registration data"
+// @Success      201    {object}  models.UserInfo
+// @Failure      400    {object}  string
+// @Failure      500    {object}  string
+// @Router       /auth/sign_up [post]
 func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	var input models.SignUpInput
 

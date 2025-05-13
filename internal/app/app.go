@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/swaggo/http-swagger/v2"
 	"net/http"
 	"os"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
+	_ "net/http"
+	_ "simple-finance/docs"
 	"simple-finance/internal/auth"
 	"simple-finance/internal/db"
 	"simple-finance/internal/handler"
@@ -96,14 +99,16 @@ func Run() {
 		r.Post("/sign_up", authHandler.SignUp)
 		r.Post("/refresh/tokens", authHandler.RefreshTokens)
 	})
+	r.Mount("/swagger/", httpSwagger.WrapHandler)
 
 	addr := fmt.Sprintf(":%s", serverPort)
 	server := http.Server{
 		Addr:    addr,
 		Handler: r,
 	}
-
+	logger.Info("Server started on port ", serverPort)
 	err = server.ListenAndServe()
+
 	if err != nil {
 		logger.Fatal(err)
 	}

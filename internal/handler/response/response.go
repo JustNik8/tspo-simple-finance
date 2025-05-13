@@ -10,6 +10,8 @@ type Body struct {
 	Message string `json:"message"`
 }
 
+// IDResponse represents an ID response
+// @Description  ID response
 type IDResponse struct {
 	ID string `json:"id"`
 }
