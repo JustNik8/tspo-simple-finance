@@ -3,23 +3,14 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/joho/godotenv"
 	"log"
 	"net/http"
+	_ "net/http"
 	"os"
+	_ "simple-finance/docs"
 	"simple-finance/internal/api"
 	"simple-finance/internal/closer"
-	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
-	_ "net/http"
-	_ "simple-finance/docs"
-	"simple-finance/internal/auth"
-	"simple-finance/internal/db"
-	"simple-finance/internal/handler"
-	appmiddleware "simple-finance/internal/handler/middleware"
-	"simple-finance/internal/tokens"
-	"simple-finance/pkg/hash"
-  "github.com/swaggo/http-swagger/v2"
-
 )
 
 const (
@@ -51,22 +42,20 @@ func (a *App) Run() error {
 	}()
 
 	return a.runHttpServer()
-
+}
 
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initConfig,
 		a.initServiceProvider,
-		a.initHttpServer,
+		a.initHttpServer}
 
 	for _, f := range inits {
 		err := f(ctx)
 		if err != nil {
 			return err
 		}
-
 	}
-
 	return nil
 }
 
