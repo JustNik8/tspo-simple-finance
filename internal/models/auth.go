@@ -34,6 +34,15 @@ type UserInfo struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// UserInfo represents user information
+// @Description  User information
+type UserInfoWithoutPass struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	UserName  string    `json:"username"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // RefreshInput represents refresh token request
 // @Description  Refresh token request
 type RefreshInput struct {

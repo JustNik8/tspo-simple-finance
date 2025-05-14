@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"github.com/go-playground/validator/v10"
+	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
 	"log"
@@ -31,11 +32,19 @@ type serviceProvider struct {
 
 	auth *auth.Manager
 
+	//redisConfig redisConfig
+	redisClient *redis.Client
+
 	authHandler *handler.AuthHandler
 
 	transactionHandler *handler.TransactionHandler
 
 	authMiddleware *middleware.AuthMiddleware
+}
+
+type redisConfig interface {
+	RedisURL() string
+	RedisPassword() string
 }
 
 func newServiceProvider() *serviceProvider {
@@ -91,6 +100,40 @@ func (s *serviceProvider) GetFinanceDb() *db.FinanceDB {
 	return s.db
 }
 
+//func (s *serviceProvider) GetRedisConfig() redisConfig {
+//	if s.redisConfig == nil {
+//		cfg, err := config.NewRedisConfig()
+//		if err != nil {
+//			log.Panicln("Redis config error:", err)
+//		}
+//		s.redisConfig = cfg
+//	}
+//	return s.redisConfig
+//}
+
+func (s *serviceProvider) GetRedisClient() *redis.Client {
+	if s.redisClient == nil {
+		// Жестко задаем параметры подключения
+		opt := &redis.Options{
+			Addr:     "redis:6379", // совпадает с именем сервиса в docker-compose
+			Password: "",           // без пароля
+			DB:       0,
+		}
+
+		client := redis.NewClient(opt)
+		_, err := client.Ping(context.Background()).Result()
+		if err != nil {
+			log.Panicln("Failed to connect to Redis:", err)
+		}
+
+		closer.Add(func() error {
+			return client.Close()
+		})
+
+		s.redisClient = client
+	}
+	return s.redisClient
+}
 func (s *serviceProvider) GetHasher() *hash.SHA1Hasher {
 	if s.hasher == nil {
 		s.hasher = hash.NewSHA1Hasher(salt)
@@ -133,7 +176,7 @@ func (s *serviceProvider) GetAuthHandler() *handler.AuthHandler {
 }
 func (s *serviceProvider) GetTransactionHandler() *handler.TransactionHandler {
 	if s.transactionHandler == nil {
-		s.transactionHandler = handler.NewTransactionHandler(s.GetFinanceDb(), s.GetValidator(), s.GetLogger())
+		s.transactionHandler = handler.NewTransactionHandler(s.GetFinanceDb(), s.GetValidator(), s.GetLogger(), s.GetRedisClient())
 	}
 	return s.transactionHandler
 }

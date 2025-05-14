@@ -3,34 +3,38 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"net/http"
 	"simple-finance/internal/db"
 	"simple-finance/internal/handler/middleware"
 	"simple-finance/internal/handler/response"
 	"simple-finance/internal/models"
 	"simple-finance/internal/tokens"
+	"time"
 )
 
 type TransactionHandler struct {
-	db        *db.FinanceDB
-	validator *validator.Validate
-	logger    *logrus.Logger
+	db          *db.FinanceDB
+	validator   *validator.Validate
+	logger      *logrus.Logger
+	redisClient *redis.Client
 }
 
 func NewTransactionHandler(
 	db *db.FinanceDB,
 	validator *validator.Validate,
 	logger *logrus.Logger,
+	redisClient *redis.Client,
 ) *TransactionHandler {
 	return &TransactionHandler{
-		db:        db,
-		validator: validator,
-		logger:    logger,
+		db:          db,
+		validator:   validator,
+		logger:      logger,
+		redisClient: redisClient,
 	}
 }
 
@@ -194,4 +198,47 @@ func (h *TransactionHandler) DeleteTransactionByID(w http.ResponseWriter, r *htt
 	}
 
 	response.IdResponse(w, transactionID)
+}
+
+// GetProfileHandler             godoc
+// @Summary      Get profile
+// @Description  Get profile by its ID
+// @Tags         transactions
+// @Produce      json
+// @Param        id  path  string  true  "id"
+// @Success      200
+// @Failure      400  {object}  string
+// @Failure      401  {object}  string
+// @Failure      404  {object}  string
+// @Failure      500  {object}  string
+// @Router       /api/profile/{id} [get]
+// @Security     Bearer
+func (r *TransactionHandler) GetProfileHandler(w http.ResponseWriter, req *http.Request) {
+	userID := chi.URLParam(req, "id")
+	ctx := req.Context()
+
+	//// Попытка получить данные из кеша
+	cachedData, err := r.redisClient.Get(ctx, "profile:"+userID).Bytes()
+	if err == nil {
+		r.logger.Infof("Got profile from cache: %s", string(cachedData))
+
+		w.Header().Set("Content-Type", "application/json")
+		//w.Write([]byte("from redis"))
+		json.NewEncoder(w).Encode(cachedData)
+
+		return
+	}
+
+	userInfo, err := r.db.GetUserById(ctx, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	responseData, _ := json.Marshal(userInfo)
+
+	// Сохраняем в кеш на 10 минут
+	r.redisClient.Set(ctx, "profile:"+userID, responseData, 10*time.Minute)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(responseData)
 }

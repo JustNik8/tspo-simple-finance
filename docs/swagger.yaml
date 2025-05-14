@@ -91,6 +91,41 @@ info:
   title: Simple Finance API
   version: "1.0"
 paths:
+  /api/profile/{id}:
+    get:
+      description: Get profile by its ID
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - Bearer: []
+      summary: Get profile
+      tags:
+      - transactions
   /api/transaction:
     get:
       description: Retrieve all transactions for the authenticated user

@@ -157,3 +157,22 @@ func (db *FinanceDB) GetUserInfo(ctx context.Context, userName string) (models.U
 
 	return userInfo, err
 }
+
+func (db *FinanceDB) GetUserById(ctx context.Context, id string) (models.UserInfo, error) {
+	const query = `
+		SELECT id, email, username,  created_at
+		FROM users
+		WHERE id = $1
+		LIMIT 1
+	`
+	row := db.conn.QueryRow(ctx, query, id)
+	var userInfo models.UserInfo
+	err := row.Scan(
+		&userInfo.ID,
+		&userInfo.Email,
+		&userInfo.UserName,
+		&userInfo.CreatedAt,
+	)
+
+	return userInfo, err
+}
